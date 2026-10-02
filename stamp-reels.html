@@ -1,0 +1,486 @@
+<title>우표 콜라주 스튜디오</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#FFFFFF; --stage:#F0F1F3; --panel:#FFFFFF; --panel-2:#F7F7F8;
+    --ink:#18181B; --muted:#71717A; --faint:#A1A1AA; --line:#E7E7EA;
+    --accent:#18181B; --accent-soft:#F1F1F2;
+    --radius:12px;
+    --ui:"Archivo",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  }
+  html,body{height:100%;}
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--ui);line-height:1.45;
+    -webkit-font-smoothing:antialiased;}
+
+  /* 넓은 화면: 두 컬럼이 뷰포트 높이에 딱 맞음 → 미리보기 완벽 중앙 정렬 */
+  .app{display:flex;height:100%;}
+  @media (max-width:880px){ html,body{height:auto;} .app{flex-direction:column;height:auto;} }
+
+  /* ---------- STAGE (left) ---------- */
+  .stage{flex:1 1 auto;min-width:0;height:100%;background:var(--stage);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:28px;overflow:hidden;}
+  @media (max-width:880px){ .stage{height:auto;padding:22px 16px;min-height:70svh;} }
+  .canvas-shell{line-height:0;align-self:center;max-width:100%;margin:0 auto;
+    filter:drop-shadow(0 10px 34px rgba(24,24,27,.18));}
+  canvas#c{max-width:100%;max-height:82vh;width:auto;height:auto;border-radius:2px;
+    cursor:grab;touch-action:none;background:#fff;display:block;}
+  @media (max-width:880px){ canvas#c{max-height:60vh;} }
+  canvas#c:active{cursor:grabbing;}
+  .stage-hint{position:absolute;left:0;right:0;bottom:16px;text-align:center;color:var(--faint);
+    font-size:12px;padding:0 20px;pointer-events:none;}
+  .saved{position:absolute;left:20px;bottom:20px;display:flex;gap:10px;align-items:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+    box-shadow:0 6px 24px rgba(24,24,27,.12);max-width:260px;}
+  .saved img{width:42px;height:auto;border-radius:5px;border:1px solid var(--line);}
+  .saved p{margin:0;font-size:11.5px;color:var(--muted);line-height:1.4;}
+  .saved strong{color:var(--ink);font-weight:600;}
+  .saved .x{margin-left:auto;border:0;background:none;color:var(--faint);cursor:pointer;font-size:16px;line-height:1;padding:2px;}
+
+  /* ---------- PANEL (right) ---------- */
+  .panel{flex:0 0 366px;width:366px;height:100%;overflow-y:auto;background:var(--panel);border-left:1px solid var(--line);}
+  @media (max-width:880px){ .panel{flex:1 1 auto;width:100%;height:auto;overflow:visible;border-left:0;border-top:1px solid var(--line);} }
+  .panel-inner{padding:8px 22px 30px;}
+
+  .brand{padding:20px 0 14px;border-bottom:1px solid var(--line);margin-bottom:6px;}
+  .brand .name{font-size:16px;font-weight:700;letter-spacing:-.01em;}
+  .brand .sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+  .sec{padding:18px 0;border-bottom:1px solid var(--line);}
+  .sec:last-of-type{border-bottom:0;}
+  .sec > h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+    font-weight:700;margin:0 0 14px;}
+
+  .row{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .row:last-child{margin-bottom:0;}
+  .row .lab{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:500;}
+  .row .val{color:var(--muted);font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:500;}
+
+  /* file drop + item */
+  .drop{display:block;width:100%;border:0;border-radius:11px;padding:18px 14px;
+    text-align:center;cursor:pointer;transition:background .15s;background:var(--panel-2);}
+  .drop:hover,.drop.over{background:#E0E0E4;}
+  .drop strong{font-weight:600;font-size:13.5px;}
+  .drop small{display:block;color:var(--muted);font-size:11.5px;margin-top:4px;}
+  input[type=file]{display:none;}
+  .fileitem{display:flex;align-items:center;gap:11px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:11px;padding:10px 12px;}
+  .fileitem img{width:34px;height:44px;object-fit:cover;border-radius:4px;border:1px solid var(--line);background:#fff;}
+  .fileitem .meta{min-width:0;flex:1;}
+  .fileitem .t{font-size:13px;font-weight:600;}
+  .fileitem .n{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .fileitem .x{border:0;background:none;color:var(--faint);cursor:pointer;font-size:18px;line-height:1;padding:4px;}
+  .fileitem .x:hover{color:var(--ink);}
+
+  /* segmented */
+  .seg{display:flex;gap:6px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:10px;padding:4px;}
+  .seg button{flex:1;border:0;background:transparent;color:var(--muted);font-family:var(--ui);
+    font-size:12.5px;font-weight:600;padding:9px 6px;border-radius:7px;cursor:pointer;line-height:1.2;}
+  .seg button .d{display:block;font-weight:400;font-size:10.5px;color:var(--faint);margin-top:1px;
+    font-variant-numeric:tabular-nums;}
+  .seg button[aria-pressed=true]{background:var(--panel);color:var(--ink);
+    box-shadow:0 1px 2px rgba(0,0,0,.1);}
+  .seg button[aria-pressed=true] .d{color:var(--muted);}
+
+  /* swatches */
+  .sw{display:flex;flex-wrap:wrap;gap:9px;align-items:center;}
+  .sw button{width:29px;height:29px;border-radius:50%;border:1px solid rgba(0,0,0,.12);cursor:pointer;
+    padding:0;position:relative;transition:transform .1s;}
+  .sw button:hover{transform:scale(1.08);}
+  .sw button[aria-pressed=true]{box-shadow:0 0 0 2px var(--panel),0 0 0 3.5px var(--ink);}
+  .sw .custom{overflow:hidden;display:inline-flex;background:conic-gradient(from 0deg,#f66,#fd6,#6f8,#6cf,#a6f,#f6c,#f66);}
+  .sw .custom input{opacity:0;width:100%;height:100%;cursor:pointer;border:0;padding:0;}
+
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:4px;
+    background:var(--line);outline:none;margin:2px 0;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;
+    background:var(--ink);cursor:pointer;border:2px solid var(--panel);box-shadow:0 1px 3px rgba(0,0,0,.25);}
+  input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;background:var(--ink);
+    cursor:pointer;border:2px solid var(--panel);}
+
+  .btn{width:100%;border:0;border-radius:11px;padding:13px;font-family:var(--ui);font-size:13.5px;
+    font-weight:700;cursor:pointer;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .12s;}
+  .btn:hover{opacity:.88;}
+  .btn svg{width:16px;height:16px;}
+  .btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);font-weight:600;}
+  .btn.ghost:hover{background:var(--panel-2);opacity:1;}
+  .btn-row{display:flex;gap:9px;}
+  .foot{color:var(--faint);font-size:11px;text-align:center;margin-top:12px;line-height:1.5;}
+</style>
+
+<div class="app">
+  <!-- LEFT: preview -->
+  <section class="stage" aria-label="미리보기">
+    <div class="canvas-shell">
+      <canvas id="c" width="1080" height="1920" role="img" aria-label="우표 콜라주 미리보기"></canvas>
+    </div>
+    <p class="stage-hint">사진·우표를 끌어서 이동</p>
+    <div class="saved" id="saved" hidden>
+      <img id="savedImg" alt="저장 이미지">
+      <p><strong>이미지 준비됨</strong><br>모바일은 꾹 눌러 저장</p>
+      <button class="x" id="savedX" aria-label="닫기">×</button>
+    </div>
+  </section>
+
+  <!-- RIGHT: controls -->
+  <aside class="panel">
+    <div class="panel-inner">
+      <div class="brand">
+        <div class="name">우표 콜라주</div>
+      </div>
+
+      <div class="sec">
+        <h2>이미지</h2>
+        <label class="drop" id="drop" for="file">
+          <strong>사진 올리기</strong>
+          <small>클릭하거나 여기로 끌어다 놓기</small>
+        </label>
+        <input type="file" id="file" accept="image/*,.heic,.heif">
+        <div id="fileitem" class="fileitem" hidden style="margin-top:10px;">
+          <img id="fileThumb" alt="">
+          <div class="meta"><div class="t">내 사진</div><div class="n" id="fileName">—</div></div>
+          <button class="x" id="fileRemove" aria-label="사진 제거">×</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h2>캔버스 사이즈</h2>
+        <div class="seg" role="group" aria-label="사이즈">
+          <button id="sizeStory" aria-pressed="true">스토리<span class="d">1080 × 1920</span></button>
+          <button id="sizeFeed" aria-pressed="false">피드<span class="d">1080 × 1350</span></button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h2>배경색</h2>
+        <div class="sw" id="swatches"></div>
+      </div>
+
+      <div class="sec">
+        <h2>우표 · 그림자</h2>
+        <div class="row">
+          <div class="lab"><span>우표 크기</span><span class="val" id="stampVal">100%</span></div>
+          <input type="range" id="stampScale" min="55" max="165" value="100">
+        </div>
+        <div class="row">
+          <div class="lab"><span>그림자 세기</span><span class="val" id="shadowVal">55</span></div>
+          <input type="range" id="shadow" min="0" max="100" value="55">
+        </div>
+        <div class="row" style="margin-bottom:0;">
+          <div class="lab"><span>메인 사진 확대</span><span class="val" id="mainZVal">1.0×</span></div>
+          <input type="range" id="mainZoom" min="100" max="320" value="100">
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="btn-row">
+          <button class="btn ghost" id="resetBtn" style="flex:0 0 42%;">초기화</button>
+          <button class="btn" id="saveBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            이미지 저장 · PNG
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/libheif-js@1.18.2/libheif-wasm/libheif-bundle.js"></script>
+<script>
+const STAMP_PATH="M8.18652 0C8.17816 0.0928415 8.17383 0.187206 8.17383 0.282227C8.17403 1.99435 9.56224 3.38184 11.2744 3.38184C12.9864 3.38159 14.3738 1.9942 14.374 0.282227C14.374 0.187204 14.3697 0.0928434 14.3613 0H19.1787C19.1703 0.0928389 19.166 0.187209 19.166 0.282227C19.1662 1.99435 20.5544 3.38184 22.2666 3.38184C23.9786 3.38164 25.366 1.99423 25.3662 0.282227C25.3662 0.187202 25.3619 0.0928461 25.3535 0H30.1709C30.1625 0.0928363 30.1582 0.187212 30.1582 0.282227C30.1584 1.99435 31.5466 3.38184 33.2588 3.38184C34.9708 3.38169 36.3592 1.99426 36.3594 0.282227C36.3594 0.187199 36.3541 0.0928487 36.3457 0H41.1631C41.1547 0.0928337 41.1504 0.187215 41.1504 0.282227C41.1506 1.99435 42.5388 3.38184 44.251 3.38184C45.9631 3.38174 47.3514 1.99429 47.3516 0.282227C47.3516 0.187196 47.3463 0.0928513 47.3379 0H52.1553C52.1469 0.0928311 52.1426 0.187217 52.1426 0.282227C52.1428 1.99435 53.531 3.38184 55.2432 3.38184C56.9553 3.38178 58.3435 1.99432 58.3438 0.282227C58.3438 0.187193 58.3384 0.0928539 58.3301 0H63.1484C63.1401 0.0928569 63.1348 0.18719 63.1348 0.282227C63.135 1.99435 64.5232 3.38184 66.2354 3.38184C67.9475 3.38183 69.3357 1.99435 69.3359 0.282227C69.3359 0.187191 69.3306 0.0928565 69.3223 0H74.1406C74.1323 0.0928542 74.127 0.187193 74.127 0.282227C74.1272 1.99432 75.5154 3.38179 77.2275 3.38184C78.9397 3.38184 80.3279 1.99435 80.3281 0.282227C80.3281 0.187188 80.3228 0.0928591 80.3145 0H85.1328C85.1244 0.0928516 85.1191 0.187196 85.1191 0.282227C85.1193 1.99429 86.5076 3.38174 88.2197 3.38184C89.9319 3.38184 91.3201 1.99435 91.3203 0.282227C91.3203 0.187215 91.316 0.0928334 91.3076 0H96.125C96.1166 0.0928489 96.1113 0.187199 96.1113 0.282227C96.1115 1.99426 97.4999 3.38169 99.2119 3.38184C100.924 3.38184 102.312 1.99435 102.312 0.282227C102.312 0.187212 102.308 0.0928361 102.3 0H107.117C107.109 0.0928462 107.104 0.187202 107.104 0.282227C107.105 1.99423 108.492 3.38164 110.204 3.38184C111.916 3.38184 113.304 1.99435 113.305 0.282227C113.305 0.187209 113.3 0.0928387 113.292 0H118.109C118.101 0.0928436 118.097 0.187204 118.097 0.282227C118.097 1.9942 119.484 3.38159 121.196 3.38184C122.908 3.38184 124.297 1.99435 124.297 0.282227C124.297 0.187207 124.293 0.0928414 124.284 0H129.102C129.093 0.0928409 129.089 0.187207 129.089 0.282227C129.089 1.99435 130.477 3.38184 132.189 3.38184C133.901 3.3816 135.289 1.99421 135.289 0.282227C135.289 0.187204 135.285 0.0928441 135.276 0H140.094C140.085 0.0928383 140.081 0.18721 140.081 0.282227C140.081 1.99435 141.469 3.38184 143.182 3.38184C144.894 3.38165 146.281 1.99424 146.281 0.282227C146.281 0.187201 146.277 0.0928467 146.269 0H151.086C151.078 0.0928356 151.073 0.187213 151.073 0.282227C151.073 1.99435 152.462 3.38184 154.174 3.38184C155.886 3.3817 157.274 1.99427 157.274 0.282227C157.274 0.187198 157.269 0.0928494 157.261 0H162.078C162.07 0.0928329 162.065 0.187216 162.065 0.282227C162.066 1.99435 163.454 3.38184 165.166 3.38184C165.359 3.38183 165.547 3.36366 165.729 3.33008V9.03223C165.637 9.02386 165.542 9.01953 165.447 9.01953C163.735 9.01977 162.348 10.408 162.348 12.1201C162.348 13.8321 163.735 15.2195 165.447 15.2197C165.542 15.2197 165.637 15.2144 165.729 15.2061V20.0244C165.637 20.0161 165.542 20.0117 165.447 20.0117C163.735 20.012 162.348 21.4002 162.348 23.1123C162.348 24.8243 163.735 26.2117 165.447 26.2119C165.542 26.2119 165.637 26.2066 165.729 26.1982V31.0166C165.637 31.0082 165.542 31.0039 165.447 31.0039C163.735 31.0041 162.348 32.3923 162.348 34.1045C162.348 35.8165 163.735 37.2048 165.447 37.2051C165.542 37.2051 165.637 37.1988 165.729 37.1904V42.0088C165.637 42.0004 165.542 41.9961 165.447 41.9961C163.735 41.9963 162.348 43.3845 162.348 45.0967C162.348 46.8088 163.735 48.197 165.447 48.1973C165.542 48.1973 165.637 48.191 165.729 48.1826V53.002C165.637 52.9936 165.542 52.9883 165.447 52.9883C163.735 52.9885 162.348 54.3767 162.348 56.0889C162.348 57.801 163.735 59.1892 165.447 59.1895C165.542 59.1895 165.637 59.1832 165.729 59.1748V63.9941C165.637 63.9858 165.542 63.9805 165.447 63.9805C163.735 63.9807 162.348 65.3689 162.348 67.0811C162.348 68.7932 163.735 70.1814 165.447 70.1816C165.542 70.1816 165.637 70.1754 165.729 70.167V74.9863C165.637 74.978 165.542 74.9727 165.447 74.9727C163.735 74.9729 162.348 76.3611 162.348 78.0732C162.348 79.7854 163.735 81.1736 165.447 81.1738C165.542 81.1738 165.637 81.1685 165.729 81.1602V85.9785C165.637 85.9702 165.542 85.9648 165.447 85.9648C163.735 85.9651 162.348 87.3534 162.348 89.0654C162.348 90.7776 163.735 92.1658 165.447 92.166C165.542 92.166 165.637 92.1607 165.729 92.1523V96.9707C165.637 96.9623 165.542 96.958 165.447 96.958C163.735 96.9582 162.348 98.3456 162.348 100.058C162.348 101.77 163.735 103.158 165.447 103.158C165.542 103.158 165.637 103.153 165.729 103.145V107.963C165.637 107.955 165.542 107.95 165.447 107.95C163.735 107.95 162.348 109.338 162.348 111.05C162.348 112.762 163.735 114.15 165.447 114.15C165.542 114.15 165.637 114.145 165.729 114.137V118.955C165.637 118.947 165.542 118.942 165.447 118.942C163.735 118.943 162.348 120.33 162.348 122.042C162.348 123.754 163.735 125.142 165.447 125.143C165.542 125.143 165.637 125.137 165.729 125.129V129.947C165.637 129.939 165.542 129.935 165.447 129.935C163.735 129.935 162.348 131.323 162.348 133.035C162.348 134.747 163.735 136.135 165.447 136.135C165.542 136.135 165.637 136.129 165.729 136.121V142.669C165.547 142.635 165.358 142.618 165.166 142.618C163.454 142.618 162.066 144.006 162.065 145.718C162.065 145.813 162.07 145.907 162.078 146H157.261C157.269 145.907 157.274 145.813 157.274 145.718C157.274 144.006 155.886 142.618 154.174 142.618C152.462 142.618 151.073 144.006 151.073 145.718C151.073 145.813 151.078 145.907 151.086 146H146.269C146.277 145.907 146.281 145.813 146.281 145.718C146.281 144.006 144.894 142.618 143.182 142.618C141.469 142.618 140.081 144.006 140.081 145.718C140.081 145.813 140.085 145.907 140.094 146H135.276C135.285 145.907 135.289 145.813 135.289 145.718C135.289 144.006 133.901 142.618 132.189 142.618C130.477 142.618 129.089 144.006 129.089 145.718C129.089 145.813 129.093 145.907 129.102 146H124.284C124.293 145.907 124.297 145.813 124.297 145.718C124.297 144.006 122.908 142.618 121.196 142.618C119.484 142.618 118.097 144.006 118.097 145.718C118.097 145.813 118.101 145.907 118.109 146H113.292C113.3 145.907 113.305 145.813 113.305 145.718C113.304 144.006 111.916 142.618 110.204 142.618C108.492 142.618 107.105 144.006 107.104 145.718C107.104 145.813 107.109 145.907 107.117 146H102.3C102.308 145.907 102.312 145.813 102.312 145.718C102.312 144.006 100.924 142.618 99.2119 142.618C97.4999 142.618 96.1115 144.006 96.1113 145.718C96.1113 145.813 96.1166 145.907 96.125 146H91.3076C91.316 145.907 91.3203 145.813 91.3203 145.718C91.3201 144.006 89.9319 142.618 88.2197 142.618C86.5076 142.618 85.1193 144.006 85.1191 145.718C85.1191 145.813 85.1244 145.907 85.1328 146H80.3145C80.3228 145.907 80.3281 145.813 80.3281 145.718C80.3279 144.006 78.9397 142.618 77.2275 142.618C75.5154 142.618 74.1272 144.006 74.127 145.718C74.127 145.813 74.1323 145.907 74.1406 146H69.3223C69.3306 145.907 69.3359 145.813 69.3359 145.718C69.3357 144.006 67.9475 142.618 66.2354 142.618C64.5232 142.618 63.135 144.006 63.1348 145.718C63.1348 145.813 63.1401 145.907 63.1484 146H58.3301C58.3384 145.907 58.3438 145.813 58.3438 145.718C58.3435 144.006 56.9553 142.618 55.2432 142.618C53.531 142.618 52.1428 144.006 52.1426 145.718C52.1426 145.813 52.1469 145.907 52.1553 146H47.3379C47.3463 145.907 47.3516 145.813 47.3516 145.718C47.3514 144.006 45.9631 142.618 44.251 142.618C42.5388 142.618 41.1506 144.006 41.1504 145.718C41.1504 145.813 41.1547 145.907 41.1631 146H36.3457C36.3541 145.907 36.3594 145.813 36.3594 145.718C36.3592 144.006 34.9708 142.618 33.2588 142.618C31.5466 142.618 30.1584 144.006 30.1582 145.718C30.1582 145.813 30.1625 145.907 30.1709 146H25.3535C25.3619 145.907 25.3662 145.813 25.3662 145.718C25.366 144.006 23.9786 142.618 22.2666 142.618C20.5544 142.618 19.1662 144.006 19.166 145.718C19.166 145.813 19.1703 145.907 19.1787 146H14.3613C14.3697 145.907 14.374 145.813 14.374 145.718C14.3738 144.006 12.9864 142.618 11.2744 142.618C9.56224 142.618 8.17403 144.006 8.17383 145.718C8.17383 145.813 8.17816 145.907 8.18652 146H3.36914C3.37751 145.907 3.38184 145.813 3.38184 145.718C3.38163 144.006 1.99342 142.618 0.28125 142.618C0.186431 142.618 0.0926492 142.623 0 142.631V136.121C0.0926766 136.129 0.186402 136.135 0.28125 136.135C1.99341 136.135 3.38162 134.747 3.38184 133.035C3.38184 131.323 1.99355 129.935 0.28125 129.935C0.186437 129.935 0.0926435 129.939 0 129.947V125.129C0.0926741 125.137 0.186405 125.143 0.28125 125.143C1.99355 125.143 3.38184 123.754 3.38184 122.042C3.38157 120.33 1.99338 118.942 0.28125 118.942C0.186435 118.942 0.092646 118.947 0 118.955V114.137C0.0926715 114.145 0.186408 114.15 0.28125 114.15C1.99355 114.15 3.38184 112.762 3.38184 111.05C3.38162 109.338 1.99341 107.95 0.28125 107.95C0.186432 107.95 0.0926486 107.955 0 107.963V103.145C0.0926688 103.153 0.186411 103.158 0.28125 103.158C1.99355 103.158 3.38184 101.77 3.38184 100.058C3.38167 98.3455 1.99345 96.958 0.28125 96.958C0.186429 96.958 0.0926513 96.9624 0 96.9707V92.1523C0.0926662 92.1607 0.186413 92.166 0.28125 92.166C1.99355 92.166 3.38184 90.7777 3.38184 89.0654C3.38172 87.3532 1.99348 85.9648 0.28125 85.9648C0.186426 85.9649 0.092654 85.9702 0 85.9785V81.1602C0.0926635 81.1685 0.186416 81.1738 0.28125 81.1738C1.99355 81.1738 3.38184 79.7855 3.38184 78.0732C3.38177 76.361 1.99351 74.9727 0.28125 74.9727C0.186423 74.9727 0.0926566 74.978 0 74.9863V70.167C0.0926893 70.1753 0.186389 70.1816 0.28125 70.1816C1.99355 70.1816 3.38184 68.7934 3.38184 67.0811C3.38182 65.3688 1.99354 63.9805 0.28125 63.9805C0.186421 63.9805 0.0926592 63.9858 0 63.9941V59.1748C0.0926867 59.1832 0.186392 59.1894 0.28125 59.1895C1.99353 59.1895 3.3818 57.8011 3.38184 56.0889C3.38184 54.3766 1.99355 52.9883 0.28125 52.9883C0.186418 52.9883 0.0926618 52.9936 0 53.002V48.1826C0.092684 48.191 0.186395 48.1973 0.28125 48.1973C1.9935 48.1973 3.38175 46.8089 3.38184 45.0967C3.38184 43.3844 1.99355 41.9961 0.28125 41.9961C0.186445 41.9961 0.0926361 42.0004 0 42.0088V37.1904C0.0926814 37.1988 0.186397 37.2051 0.28125 37.2051C1.99347 37.2051 3.38171 35.8167 3.38184 34.1045C3.38184 32.3922 1.99355 31.0039 0.28125 31.0039C0.186442 31.0039 0.0926387 31.0083 0 31.0166V26.1982C0.0926787 26.2066 0.1864 26.2119 0.28125 26.2119C1.99343 26.2119 3.38166 24.8244 3.38184 23.1123C3.38184 21.4 1.99355 20.0117 0.28125 20.0117C0.186439 20.0117 0.0926414 20.0161 0 20.0244V15.2061C0.0926761 15.2144 0.186403 15.2197 0.28125 15.2197C1.9934 15.2197 3.38161 13.8322 3.38184 12.1201C3.38184 10.4078 1.99355 9.01953 0.28125 9.01953C0.186437 9.01954 0.092644 9.02388 0 9.03223V3.36816C0.0926776 3.37651 0.186401 3.38182 0.28125 3.38184C1.99342 3.38184 3.38164 1.99435 3.38184 0.282227C3.38184 0.187207 3.37751 0.0928408 3.36914 0H8.18652Z";
+const SW=166, SH=146;
+const SIZES={ story:{w:1080,h:1920}, feed:{w:1080,h:1350} };
+
+const state={
+  size:'story', bg:'#FFFFFF', split:0.5, stampScale:1, shadow:55,
+  main:{zoom:1,panX:0,panY:0},
+  top:{cx:0.5, cy:0.25},
+  bot:{cx:0.5, cy:0.75},
+  img:null, isPlaceholder:true
+};
+const TOP_BASE_W=0.336, BOT_BASE_W=0.336;
+// 위/아래 반쪽을 각각의 캔버스로 보고, 같은 상대 위치로 나란히(평행) 이동
+function linkStamps(from){
+  if(from==='bot'){ state.top.cx=state.bot.cx; state.top.cy=state.bot.cy-0.5; }
+  else{ state.bot.cx=state.top.cx; state.bot.cy=state.top.cy+0.5; }
+}
+
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+
+/* placeholder */
+function makePlaceholder(cb){
+  const p=document.createElement('canvas'); p.width=900; p.height=1200;
+  const g=p.getContext('2d');
+  const grad=g.createLinearGradient(0,0,900,1200);
+  grad.addColorStop(0,'#8FB8AD'); grad.addColorStop(.5,'#CDBBD8'); grad.addColorStop(1,'#EDC49B');
+  g.fillStyle=grad; g.fillRect(0,0,900,1200);
+  g.globalAlpha=.16; g.fillStyle='#fff';
+  for(let i=0;i<5;i++){ g.beginPath(); g.arc(180+i*150, 300+((i*220)%700), 120-i*8, 0, 7); g.fill(); }
+  g.globalAlpha=1; g.fillStyle='rgba(255,255,255,.94)';
+  g.textAlign='center'; g.font='600 62px "Archivo",sans-serif';
+  g.fillText('SAMPLE', 450, 585);
+  g.font='400 32px "Archivo",sans-serif';
+  g.fillText('사진을 올려보세요', 450, 645);
+  const im=new Image(); im.onload=()=>cb(im); im.src=p.toDataURL();
+}
+
+/* main photo placement in bottom panel -> {dx,dy,s} */
+function mainTransform(){
+  const {w,h}=SIZES[state.size]; const splitY=Math.round(h*state.split);
+  const img=state.img, iw=img.naturalWidth, ih=img.naturalHeight, rh=h-splitY;
+  const s=Math.max(w/iw, rh/ih)*state.main.zoom;
+  const dw=iw*s, dh=ih*s;
+  const dx=(w-dw)/2 + state.main.panX;
+  const dy=splitY + (rh-dh)/2 + state.main.panY;
+  return {dx,dy,s,splitY,w,h};
+}
+
+/* build stamp Path2D in canvas coords */
+function stampPath(cx,cy,wPx){
+  const scale=wPx/SW, hPx=SH*scale, left=cx-wPx/2, top=cy-hPx/2;
+  const m=new DOMMatrix().translateSelf(left,top).scaleSelf(scale);
+  const p=new Path2D(); p.addPath(new Path2D(STAMP_PATH), m);
+  return p;
+}
+function applyShadow(){
+  if(state.shadow<=0){ ctx.shadowColor='transparent'; return; }
+  const t=state.shadow/100;
+  // 세기 올릴수록: 블러는 아주 조금만 / x·y 거리 길어짐 / 불투명도 높아짐
+  ctx.shadowColor='rgba(24,26,24,'+(0.14+t*0.42)+')';
+  ctx.shadowBlur=3+t*7;
+  ctx.shadowOffsetX=t*10;
+  ctx.shadowOffsetY=2+t*30;
+}
+
+// 우표 안쪽으로 파고드는 내부 그림자 (바깥 영역을 그림자와 함께 채워 안으로 번지게)
+function drawInnerShadow(path){
+  if(state.shadow<=0) return;
+  const {w,h}=SIZES[state.size];
+  const t=state.shadow/100;
+  ctx.save();
+  ctx.clip(path);
+  const region=new Path2D();
+  region.rect(-w, -h, w*3, h*3);
+  region.addPath(path);
+  ctx.shadowColor='rgba(24,26,24,'+(0.2+t*0.5)+')';
+  ctx.shadowBlur=3+t*7;
+  ctx.shadowOffsetX=0;
+  ctx.shadowOffsetY=1+t*4;
+  ctx.fillStyle='#000';
+  ctx.fill(region,'evenodd');
+  ctx.restore();
+}
+
+function render(){
+  const {w,h}=SIZES[state.size];
+  if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; }
+  const splitY=Math.round(h*state.split);
+  const img=state.img;
+
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle=state.bg; ctx.fillRect(0,0,w,h);
+
+  const mt = img ? mainTransform() : null;
+
+  // main photo, bottom panel
+  if(mt){
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0,splitY,w,h-splitY); ctx.clip();
+    ctx.drawImage(img, mt.dx, mt.dy, img.naturalWidth*mt.s, img.naturalHeight*mt.s);
+    ctx.restore();
+  }
+
+  // stamp geometry
+  const botCx=state.bot.cx*w, botCy=state.bot.cy*h, botW=BOT_BASE_W*w*state.stampScale;
+  const topCx=state.top.cx*w, topCy=state.top.cy*h, topW=TOP_BASE_W*w*state.stampScale;
+
+  // bottom "removed" stamp = background colour, with an INNER shadow (사진이 뚫린 듯 안쪽으로)
+  const bp=stampPath(botCx,botCy,botW);
+  ctx.save(); ctx.fillStyle=state.bg; ctx.fill(bp); ctx.restore();
+  drawInnerShadow(bp);
+
+  // top stamp = the exact piece the bottom stamp is covering (synced)
+  const tp=stampPath(topCx,topCy,topW);
+  ctx.save(); applyShadow(); ctx.fillStyle='#ffffff'; ctx.fill(tp); ctx.restore();
+  if(mt){
+    const imx=(botCx-mt.dx)/mt.s, imy=(botCy-mt.dy)/mt.s;   // image point under bottom-stamp centre
+    const s2=mt.s*(topW/botW);
+    const dx2=topCx-imx*s2, dy2=topCy-imy*s2;
+    ctx.save(); ctx.clip(tp);
+    ctx.drawImage(img, dx2, dy2, img.naturalWidth*s2, img.naturalHeight*s2);
+    ctx.restore();
+  }
+}
+
+/* hit test / drag */
+function stampRect(which){
+  const {w,h}=SIZES[state.size];
+  const s=which==='top'?state.top:state.bot;
+  const wPx=(which==='top'?TOP_BASE_W:BOT_BASE_W)*w*state.stampScale;
+  const hPx=SH*(wPx/SW);
+  return {x:s.cx*w-wPx/2, y:s.cy*h-hPx/2, w:wPx, h:hPx};
+}
+function toCanvas(e){
+  const r=cv.getBoundingClientRect();
+  return { x:(e.clientX-r.left)*(cv.width/r.width), y:(e.clientY-r.top)*(cv.height/r.height) };
+}
+let drag=null;
+cv.addEventListener('pointerdown',e=>{
+  const p=toCanvas(e); const {w,h}=SIZES[state.size];
+  const inside=rc=>p.x>=rc.x&&p.x<=rc.x+rc.w&&p.y>=rc.y&&p.y<=rc.y+rc.h;
+  const rt=stampRect('top'), rb=stampRect('bot');
+  if(inside(rb)) drag={t:'bot', ox:p.x-state.bot.cx*w, oy:p.y-state.bot.cy*h};
+  else if(inside(rt)) drag={t:'top', ox:p.x-state.top.cx*w, oy:p.y-state.top.cy*h};
+  else if(p.y>=h*state.split && state.img) drag={t:'main', ox:p.x, oy:p.y, px:state.main.panX, py:state.main.panY};
+  if(drag) cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  const p=toCanvas(e); const {w,h}=SIZES[state.size];
+  if(drag.t==='main'){ state.main.panX=drag.px+(p.x-drag.ox); state.main.panY=drag.py+(p.y-drag.oy); }
+  else{ const s=drag.t==='top'?state.top:state.bot;
+        s.cx=Math.min(1.12,Math.max(-0.12,(p.x-drag.ox)/w));
+        s.cy=Math.min(1.12,Math.max(-0.12,(p.y-drag.oy)/h)); }
+  render();
+});
+cv.addEventListener('pointerup',()=>{ drag=null; });
+cv.addEventListener('wheel',e=>{
+  if(!state.img) return; e.preventDefault();
+  let z=Math.min(3.2,Math.max(1, state.main.zoom*(e.deltaY<0?1.06:0.94)));
+  state.main.zoom=z; $('mainZoom').value=Math.round(z*100); $('mainZVal').textContent=z.toFixed(1)+'×';
+  render();
+},{passive:false});
+
+/* controls */
+function setSize(sz){
+  state.size=sz;
+  $('sizeStory').setAttribute('aria-pressed', sz==='story');
+  $('sizeFeed').setAttribute('aria-pressed', sz==='feed');
+  render();
+}
+$('sizeStory').onclick=()=>setSize('story');
+$('sizeFeed').onclick=()=>setSize('feed');
+$('stampScale').oninput=e=>{ state.stampScale=+e.target.value/100; $('stampVal').textContent=e.target.value+'%'; render(); };
+$('shadow').oninput=e=>{ state.shadow=+e.target.value; $('shadowVal').textContent=e.target.value; render(); };
+$('mainZoom').oninput=e=>{ state.main.zoom=+e.target.value/100; $('mainZVal').textContent=(+e.target.value/100).toFixed(1)+'×'; render(); };
+$('resetBtn').onclick=()=>{
+  state.main={zoom:1,panX:0,panY:0};
+  state.top={cx:0.5,cy:0.25}; state.bot={cx:0.5,cy:0.75};
+  state.stampScale=1; state.shadow=55;
+  $('mainZoom').value=100; $('mainZVal').textContent='1.0×';
+  $('stampScale').value=100; $('stampVal').textContent='100%';
+  $('shadow').value=55; $('shadowVal').textContent='55';
+  render();
+};
+
+/* swatches */
+const SWATCHES=['#FFFFFF','#F4EFE6','#F3D9DE','#E7DDF0','#CDDCC9','#CBDDEA','#F2E7C4','#1C1C1C'];
+const swWrap=$('swatches');
+SWATCHES.forEach(col=>{
+  const b=document.createElement('button');
+  b.style.background=col; b.setAttribute('aria-pressed', col===state.bg); b.title=col;
+  b.onclick=()=>{ state.bg=col; [...swWrap.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true'); render(); };
+  swWrap.appendChild(b);
+});
+const cust=document.createElement('button');
+cust.className='custom'; cust.title='직접 선택';
+cust.innerHTML='<input type="color" value="#ffffff" aria-label="배경색 직접 선택">';
+const cInput=cust.querySelector('input');
+cInput.oninput=e=>{ state.bg=e.target.value; [...swWrap.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed','false')); cust.setAttribute('aria-pressed','true'); render(); };
+swWrap.appendChild(cust);
+
+/* upload */
+const fileInput=$('file'), drop=$('drop');
+const dropStrong=()=>drop.querySelector('strong');
+function applyImage(im, url, name){
+  state.img=im; state.isPlaceholder=false;
+  state.main={zoom:1,panX:0,panY:0}; $('mainZoom').value=100; $('mainZVal').textContent='1.0×';
+  $('fileThumb').src=url; $('fileName').textContent=name||'image';
+  $('fileitem').hidden=false; dropStrong().textContent='다른 사진으로 교체';
+  render();
+}
+function tryDecode(blob, name){ // 브라우저 네이티브 디코드 시도
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(blob);
+    const im=new Image();
+    im.onload=()=>res({im,url,name});
+    im.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('native-decode-failed')); };
+    im.src=url;
+  });
+}
+function getHeif(){
+  return new Promise((resolve,reject)=>{
+    let tries=0;
+    (function poll(){
+      let L=window.libheif;
+      if(typeof L==='function'){ try{ const r=L(); if(r&&r.HeifDecoder) L=r; }catch(e){} }
+      if(L && L.HeifDecoder) return resolve(L);
+      if(++tries>120) return reject(new Error('libheif 로딩 실패'));
+      setTimeout(poll,100);
+    })();
+  });
+}
+async function convertHeic(f){
+  const name=(f.name||'image').replace(/\.(heic|heif)$/i,'.jpg');
+  dropStrong().textContent='HEIC 변환 중…';
+  try{
+    const heif=await getHeif();
+    const buf=new Uint8Array(await f.arrayBuffer());
+    const imgs=new heif.HeifDecoder().decode(buf);
+    if(!imgs||!imgs.length) throw new Error('이미지 없음');
+    const image=imgs[0], w=image.get_width(), h=image.get_height();
+    const cvs=document.createElement('canvas'); cvs.width=w; cvs.height=h;
+    const c2=cvs.getContext('2d'), id=c2.createImageData(w,h);
+    await new Promise((res,rej)=>{ image.display(id, d=>{ d?res():rej(new Error('디코딩 실패')); }); });
+    c2.putImageData(id,0,0);
+    const url=cvs.toDataURL('image/jpeg',0.92);
+    const im=new Image();
+    im.onload=()=>applyImage(im,url,name);
+    im.onerror=()=>{ dropStrong().textContent='HEIC 표시 실패'; };
+    im.src=url;
+  }catch(e){ console.error('HEIC error:',e);
+    dropStrong().textContent='HEIC 열기 실패: '+((e&&e.message)||e).toString().slice(0,40); }
+}
+function loadFile(f){
+  if(!f) return;
+  const isHeic=/image\/hei[cf]/i.test(f.type)||/\.(heic|heif)$/i.test(f.name||'');
+  if(!isHeic && !f.type.startsWith('image/')) return;
+  tryDecode(f, f.name)                         // 먼저 네이티브로 시도 (사파리는 HEIC도 됨)
+    .then(({im,url,name})=>applyImage(im,url,name))
+    .catch(()=>{ if(isHeic) convertHeic(f);     // 실패 & HEIC → 변환
+                 else dropStrong().textContent='이미지를 열 수 없음'; });
+}
+fileInput.onchange=e=>loadFile(e.target.files[0]);
+$('fileRemove').onclick=()=>{
+  $('fileitem').hidden=true; fileInput.value=''; drop.querySelector('strong').textContent='사진 올리기';
+  makePlaceholder(im=>{ state.img=im; state.isPlaceholder=true; render(); });
+};
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
+cv.addEventListener('dragover',e=>e.preventDefault());
+cv.addEventListener('drop',e=>{e.preventDefault(); loadFile(e.dataTransfer.files[0]);});
+
+/* save */
+$('savedX').onclick=()=>$('saved').hidden=true;
+$('saveBtn').onclick=()=>{
+  render();
+  cv.toBlob(async blob=>{
+    if(!blob) return;
+    try{
+      const dl = window.claude && claude.use ? await claude.use('downloads') : null;
+      if(dl) await dl.save({filename:`stamp_${state.size}_${Date.now()}.png`, data:blob});
+    }catch(err){}
+    const url=URL.createObjectURL(blob);
+    $('savedImg').src=url; $('saved').hidden=false;
+  },'image/png');
+};
+
+/* boot */
+makePlaceholder(im=>{ state.img=im; state.isPlaceholder=true; render(); });
+render();
+</script>
